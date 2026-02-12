@@ -1,0 +1,51 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:18.7.4-ce.0
+    container_name: gitlab
+    restart: unless-stopped
+    hostname: gitlab.local
+    ports:
+      - "8082:80"
+      - "8443:443"
+      - "2222:22"
+    networks:
+      - devops-network
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.local'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+# -------------------------
+# LDAP configuration
+# -------------------------
+        # gitlab_rails['ldap_enabled'] = true
+
+        # gitlab_rails['ldap_servers'] = YAML.load <<-'EOS'
+        #   main:
+        #     label: 'LDAP'
+        #     host: 'ldap.example.com'
+        #     port: 389
+        #     uid: 'sAMAccountName'
+        #     bind_dn: 'CN=ldap-reader,OU=Service Accounts,DC=example,DC=com'
+        #     password: 'StrongPasswordHere'
+        #     encryption: 'plain'
+        #     verify_certificates: false
+        #     base: 'DC=example,DC=com'
+        #     active_directory: true
+        #     allow_username_or_email_login: true
+        #     lowercase_usernames: true
+        # EOS
+
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+
+    shm_size: "256m"
+
+networks:
+  devops-network:
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
