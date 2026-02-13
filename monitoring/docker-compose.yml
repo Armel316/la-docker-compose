@@ -10,7 +10,7 @@ services:
       - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml
       - prometheus_data:/prometheus
     networks:
-      - monitoring
+      - devops-network
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -21,7 +21,7 @@ services:
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     networks:
-      - monitoring
+      - devops-network
 
   grafana:
     image: grafana/grafana:latest
@@ -35,7 +35,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
-      - monitoring
+      - devops-network
 
   loki:
     image: grafana/loki:2.9.4
@@ -48,7 +48,7 @@ services:
     ports:
       - "3100:3100"
     networks:
-      - monitoring
+      - devops-network
 
   promtail:
     image: grafana/promtail:2.9.4
@@ -59,14 +59,58 @@ services:
       - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
     command: -config.file=/etc/promtail/promtail-config.yml
     networks:
-      - monitoring
+      - devops-network
     depends_on:
       - loki
+
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml
+    networks:
+      - devops-network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    networks:
+      - devops-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8086:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command:
+      - "--docker_only=true"
+    networks:
+      - devops-network
+
+networks:
+  devops-network:
 
 volumes:
   prometheus_data:
   grafana_data:
   loki_data:
-
-networks:
-  monitoring:

@@ -1,0 +1,26 @@
+services:
+  vault:
+    image: hashicorp/vault:1.21
+    container_name: vault
+    restart: unless-stopped
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=myroot
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://0.0.0.0:8200
+    volumes:
+      - vault_data:/vault/data
+      - ./config:/vault/config
+      - ./file:/vault/file
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    networks:
+      - devops-network
+    
+networks:
+  devops-network: 
+
+volumes:
+  vault_data:
+
