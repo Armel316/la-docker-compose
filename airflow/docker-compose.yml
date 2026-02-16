@@ -1,0 +1,80 @@
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.2
+  restart: unless-stopped
+  environment:
+    # AIRFLOW_UID: ${AIRFLOW_UID}
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "supersecretkey"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - airflow_logs:/opt/airflow/logs
+  networks:
+    - devops-network
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: airflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - devops-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: airflow-redis
+    restart: unless-stopped
+    networks:
+      - devops-network
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    depends_on:
+      - postgres
+      - redis
+    command: webserver
+    ports:
+      - "8087:8080"
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    depends_on:
+      - airflow-webserver
+    command: scheduler
+
+  airflow-worker:
+    <<: *airflow-common
+    container_name: airflow-worker
+    depends_on:
+      - airflow-scheduler
+    command: celery worker
+
+  flower:
+    <<: *airflow-common
+    container_name: airflow-flower
+    depends_on:
+      - redis
+    command: celery flower
+    ports:
+      - "5555:5555"
+
+volumes:
+  postgres_data:
+  airflow_logs:
+
+networks:
+  devops-network:
+    external: true
+
